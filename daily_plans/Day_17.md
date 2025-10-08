@@ -1,15 +1,15 @@
-# Day 02: English Learning Plan
+# Day 17: English Learning Plan
 
 ## Listening (15-30 min)
-- Source: [VOA](https://learningenglish.voanews.com/)
+- Source: [TED](https://www.ted.com/talks)
 - Focus: Improve comprehension and note-taking skills
 
 ## Vocabulary (10 words)
-- wake up, brush teeth, commute, breakfast, lunch, dinner, hobby, reading, swimming, jogging
+- exercise, diet, wellness, health, doctor, medicine, sleep, yoga, gym, running
 - Tip: Write 1 sentence per word and practice daily
 
 ## Grammar (15 min)
-- Topic: Present Simple & Articles (a, an, the)
+- Topic: Present Perfect
 - Exercise: Write 5 sentences using this grammar point
 
 ## Speaking/Writing (10-20 min)

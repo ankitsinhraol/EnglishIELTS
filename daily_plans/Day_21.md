@@ -1,15 +1,15 @@
-# Day 02: English Learning Plan
+# Day 21: English Learning Plan
 
 ## Listening (15-30 min)
-- Source: [VOA](https://learningenglish.voanews.com/)
+- Source: [TED](https://www.ted.com/talks)
 - Focus: Improve comprehension and note-taking skills
 
 ## Vocabulary (10 words)
-- wake up, brush teeth, commute, breakfast, lunch, dinner, hobby, reading, swimming, jogging
+- innovation, gadget, software, device, technology, computer, internet, app, AI, robot
 - Tip: Write 1 sentence per word and practice daily
 
 ## Grammar (15 min)
-- Topic: Present Simple & Articles (a, an, the)
+- Topic: Modals (can, should, must)
 - Exercise: Write 5 sentences using this grammar point
 
 ## Speaking/Writing (10-20 min)
