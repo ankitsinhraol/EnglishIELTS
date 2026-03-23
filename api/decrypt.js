@@ -1,17 +1,26 @@
-const crypto = require('crypto');
+const forge = require('node-forge');
 
-const DES_KEY = Buffer.from('38346591', 'utf8');
+const DES_KEY = '38346591';
 const QUALITIES = ['12', '48', '96', '160', '320'];
 
 function decryptUrl(encryptedUrl) {
     if (!encryptedUrl) return null;
+
     try {
-        const encrypted = Buffer.from(encryptedUrl, 'base64');
-        const decipher = crypto.createDecipheriv('des-ecb', DES_KEY, null);
-        decipher.setAutoPadding(true);
-        let decrypted = decipher.update(encrypted, null, 'utf8');
-        decrypted += decipher.final('utf8');
-        return decrypted;
+        let cleanUrl = encryptedUrl.trim();
+        while (cleanUrl.length % 4 !== 0) {
+            cleanUrl += '=';
+        }
+
+        const encrypted = forge.util.decode64(cleanUrl);
+        const decipher = forge.cipher.createDecipher('DES-ECB', DES_KEY);
+        decipher.start();
+        decipher.update(forge.util.createBuffer(encrypted));
+        const success = decipher.finish();
+
+        if (!success) return null;
+        return decipher.output.toString('utf8');
+
     } catch (e) {
         return null;
     }
@@ -28,8 +37,9 @@ module.exports = async (req, res) => {
 
     const downloadUrl = QUALITIES.map(q => ({
         quality: q + 'kbps',
-        link: decrypted.replace('_96.mp4', `_${q}.mp4`)
-                       .replace('_96.m4a', `_${q}.m4a`)
+        link: decrypted
+            .replace(/_\d+\.mp4/, `_${q}.mp4`)
+            .replace(/_\d+\.m4a/, `_${q}.m4a`)
     }));
 
     return res.json({

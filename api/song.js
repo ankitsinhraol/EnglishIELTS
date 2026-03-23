@@ -1,73 +1,47 @@
 const fetch = require('node-fetch');
-const crypto = require('crypto');
+const forge = require('node-forge');
 
-// ===== DES DECRYPTION =====
-const DES_KEY = Buffer.from('38346591', 'utf8');
+// ===== DES DECRYPTION USING NODE-FORGE =====
+const DES_KEY = '38346591';
 const QUALITIES = ['12', '48', '96', '160', '320'];
 
 function decryptUrl(encryptedUrl) {
-    if (!encryptedUrl) {
-        console.log('❌ No encrypted URL provided');
-        return null;
-    }
+    if (!encryptedUrl) return null;
 
     try {
-        // Clean the encrypted URL
         let cleanUrl = encryptedUrl.trim();
 
-        // Fix base64 padding if needed
+        // Fix base64 padding
         while (cleanUrl.length % 4 !== 0) {
             cleanUrl += '=';
         }
 
-        console.log('🔐 Attempting decryption...');
-        console.log('📝 Encrypted URL length:', cleanUrl.length);
-        console.log('📝 First 50 chars:', cleanUrl.substring(0, 50));
+        // Base64 decode to binary string
+        const encrypted = forge.util.decode64(cleanUrl);
 
-        const encryptedBuffer = Buffer.from(cleanUrl, 'base64');
-        console.log('📝 Buffer length:', encryptedBuffer.length);
+        // Create DES-ECB cipher
+        const decipher = forge.cipher.createDecipher('DES-ECB', DES_KEY);
+        decipher.start();
+        decipher.update(forge.util.createBuffer(encrypted));
+        const success = decipher.finish();
 
-        // DES-ECB decryption
-        const decipher = crypto.createDecipheriv('des-ecb', DES_KEY, null);
-        decipher.setAutoPadding(true);
+        if (!success) {
+            console.error('DES decryption finish() returned false');
+            return null;
+        }
 
-        let decrypted = decipher.update(encryptedBuffer, null, 'utf8');
-        decrypted += decipher.final('utf8');
-
-        console.log('✅ Decrypted URL:', decrypted);
+        const decrypted = decipher.output.toString('utf8');
 
         if (!decrypted || decrypted.length < 10) {
-            console.log('❌ Decrypted URL too short');
+            console.error('Decrypted URL too short:', decrypted);
             return null;
         }
 
         return decrypted;
 
     } catch (e) {
-        console.error('❌ Decryption failed:', e.message);
-
-        // Try alternative: sometimes the URL needs URL decoding first
-        try {
-            const urlDecoded = decodeURIComponent(encryptedUrl.trim());
-            let cleanUrl = urlDecoded;
-            while (cleanUrl.length % 4 !== 0) {
-                cleanUrl += '=';
-            }
-
-            const encryptedBuffer = Buffer.from(cleanUrl, 'base64');
-            const decipher = crypto.createDecipheriv('des-ecb', DES_KEY, null);
-            decipher.setAutoPadding(true);
-
-            let decrypted = decipher.update(encryptedBuffer, null, 'utf8');
-            decrypted += decipher.final('utf8');
-
-            console.log('✅ Decrypted URL (after URL decode):', decrypted);
-            return decrypted;
-
-        } catch (e2) {
-            console.error('❌ Second attempt also failed:', e2.message);
-            return null;
-        }
+        console.error('Decryption error:', e.message);
+        return null;
     }
 }
 
@@ -75,17 +49,13 @@ function generateDownloadUrls(encryptedMediaUrl, is320) {
     const decryptedUrl = decryptUrl(encryptedMediaUrl);
     if (!decryptedUrl) return [];
 
-    // Decrypted URL comes with _96.mp4 by default
-    // Generate all quality variants
     const qualities = is320 ? QUALITIES : QUALITIES.filter(q => q !== '320');
 
     return qualities.map(q => ({
         quality: q + 'kbps',
         link: decryptedUrl
-            .replace(/_96\.mp4/, `_${q}.mp4`)
-            .replace(/_96\.m4a/, `_${q}.m4a`)
-            .replace(/_96_p\.mp4/, `_${q}.mp4`)
-            .replace(/_96_p\.m4a/, `_${q}.m4a`)
+            .replace(/_\d+\.mp4/, `_${q}.mp4`)
+            .replace(/_\d+\.m4a/, `_${q}.m4a`)
     }));
 }
 
@@ -112,16 +82,7 @@ function formatSong(rawSong) {
     const baseImage = rawSong.image || '';
     const is320 = rawSong['320kbps'] === 'true';
 
-    console.log(`\n🎵 Processing: ${rawSong.song || rawSong.title}`);
-    console.log(`🔑 encrypted_media_url exists: ${!!rawSong.encrypted_media_url}`);
-    console.log(`🔑 encrypted_media_url: ${rawSong.encrypted_media_url?.substring(0, 60)}...`);
-
     const downloadUrl = generateDownloadUrls(rawSong.encrypted_media_url, is320);
-
-    console.log(`📦 Generated ${downloadUrl.length} download URLs`);
-    if (downloadUrl.length > 0) {
-        console.log(`📦 First URL: ${downloadUrl[0].link}`);
-    }
 
     return {
         id: rawSong.id,
@@ -174,9 +135,6 @@ module.exports = async (req, res) => {
         const ids = id.replace(/\s/g, '');
         const url = `https://www.jiosaavn.com/api.php?__call=song.getDetails&pids=${ids}&_format=json&_marker=0`;
 
-        console.log('\n========================================');
-        console.log('🔍 Fetching song:', ids);
-
         const response = await fetch(url, { headers: HEADERS });
         let text = await response.text();
 
@@ -191,11 +149,9 @@ module.exports = async (req, res) => {
         try {
             data = JSON.parse(text);
         } catch (parseErr) {
-            console.error('❌ JSON parse error');
             return res.status(500).json({
                 success: false,
-                error: 'Failed to parse response',
-                debug: text.substring(0, 300)
+                error: 'Failed to parse response'
             });
         }
 
@@ -214,21 +170,7 @@ module.exports = async (req, res) => {
                 return res.status(500).json({ success: false, error: 'Failed to format song' });
             }
 
-            // DO NOT fallback to preview URL
-            // If decryption failed, return empty downloadUrl
-            // Frontend will show proper error
-
-            return res.json({
-                success: true,
-                data: formatted,
-                // Include debug info temporarily
-                _debug: {
-                    hasEncryptedUrl: !!rawSong.encrypted_media_url,
-                    encryptedUrlLength: rawSong.encrypted_media_url?.length || 0,
-                    downloadUrlCount: formatted.downloadUrl.length,
-                    decryptionWorked: formatted.downloadUrl.length > 0
-                }
-            });
+            return res.json({ success: true, data: formatted });
 
         } else {
             const results = Object.values(data)
