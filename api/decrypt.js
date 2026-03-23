@@ -1,30 +1,33 @@
 const CryptoJS = require('crypto-js');
-const DECRYPT_KEY = CryptoJS.enc.Utf8.parse('3834659127733675');
+
+const DES_KEY = CryptoJS.enc.Utf8.parse('38346591');
+const ZERO_IV = CryptoJS.enc.Utf8.parse('\0\0\0\0\0\0\0\0');
 
 module.exports = async (req, res) => {
-    if (req.method === 'OPTIONS') return res.status(200).end();
-
     const { url } = req.query;
-    if (!url) return res.status(400).json({ success: false, error: 'Missing ?url=' });
+    if (!url) return res.status(400).json({ error: 'Missing url' });
 
     try {
-        const decrypted = CryptoJS.AES.decrypt(
-            { ciphertext: CryptoJS.enc.Base64.parse(url) },
-            DECRYPT_KEY,
-            { mode: CryptoJS.mode.ECB, padding: CryptoJS.pad.Pkcs7 }
+        const encrypted = CryptoJS.enc.Base64.parse(url);
+        const decrypted = CryptoJS.TripleDES.decrypt(
+            { ciphertext: encrypted },
+            DES_KEY,
+            { iv: ZERO_IV, mode: CryptoJS.mode.ECB, padding: CryptoJS.pad.Pkcs7 }
         );
-        const result = decrypted.toString(CryptoJS.enc.Utf8);
-        if (!result) return res.status(400).json({ success: false, error: 'Decryption failed' });
+        let final_url = decrypted.toString(CryptoJS.enc.Utf8).replace('_96.mp4', '_320.mp4');
 
-        return res.json({
+        const base = final_url.replace('_320.mp4', '');
+        const qualities = ['12', '48', '96', '160', '320'].map(q => ({
+            quality: q + 'kbps',
+            link: base + '_' + q + '.mp4'
+        }));
+
+        res.json({
             success: true,
-            decryptedUrl: result,
-            allQualities: ['48', '96', '160', '320'].map(q => ({
-                quality: q + 'kbps',
-                url: result.replace(/_\d+\.mp4/, `_${q}.mp4`).replace(/_\d+\.m4a/, `_${q}.m4a`)
-            }))
+            decryptedUrl: final_url,
+            downloadUrl: qualities
         });
     } catch (e) {
-        return res.status(500).json({ success: false, error: 'Decryption failed' });
+        res.status(500).json({ success: false, error: 'Decryption failed' });
     }
 };
