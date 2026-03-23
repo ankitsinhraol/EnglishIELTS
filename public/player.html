@@ -618,12 +618,11 @@ async function handleSongClick(index) {
     highlightActive();
     showPlayerBar(song);
 
-    // Show loading state on the song item
+    // Show loading state
     const el = document.getElementById(`s-${index}`);
     if (el) el.classList.add('loading');
 
     try {
-        // ===== FETCH FULL SONG DATA WITH STREAM URLS =====
         const res = await fetch(`${API}/song?id=${song.id}`);
         const data = await res.json();
 
@@ -636,19 +635,22 @@ async function handleSongClick(index) {
 
         currentSongData = data.data;
 
-        // Build URL map
+        // Build URL map from new response format
         currentUrls = {};
-        if (data.data.downloadUrl) {
+        if (data.data.downloadUrl && data.data.downloadUrl.length > 0) {
             data.data.downloadUrl.forEach(item => {
                 currentUrls[item.quality] = item.url;
             });
         }
 
+        // Find best available stream URL
         const streamUrl = currentUrls[currentQuality]
             || currentUrls['320kbps']
             || currentUrls['160kbps']
             || currentUrls['96kbps']
-            || currentUrls['48kbps'];
+            || currentUrls['48kbps']
+            || currentUrls['preview']
+            || null;
 
         if (!streamUrl) {
             alert('No stream URL available for this song');
@@ -656,7 +658,16 @@ async function handleSongClick(index) {
         }
 
         // Update player with full data
-        updatePlayerUI(data.data);
+        // Handle new artists format (object with primary, featured, music)
+        const artistText = typeof data.data.artists === 'object'
+            ? data.data.artists.primary
+            : data.data.artists;
+
+        document.getElementById('pTitle').textContent = data.data.name || '—';
+        document.getElementById('pArtist').textContent = artistText || '—';
+        document.getElementById('pImg').src = data.data.image?.medium || data.data.image?.low || '';
+        document.getElementById('lyricsLink').style.display = data.data.hasLyrics ? 'inline' : 'none';
+        document.getElementById('dlLink').href = streamUrl;
 
         // Play
         audio.src = streamUrl;
@@ -669,7 +680,6 @@ async function handleSongClick(index) {
         alert('Failed to load song. Try again.');
     }
 }
-
 // ===== PLAYER UI =====
 function showPlayerBar(song) {
     const bar = document.getElementById('playerBar');
@@ -720,7 +730,27 @@ function prevSong() {
     }
 }
 
-audio.addEventListener('play', updatePlayBtn);
+// Also update the Media Session handler
+audio.addEventListener('play', () => {
+    if (!currentSongData || !('mediaSession' in navigator)) return;
+
+    const artistText = typeof currentSongData.artists === 'object'
+        ? currentSongData.artists.primary
+        : currentSongData.artists;
+
+    navigator.mediaSession.metadata = new MediaMetadata({
+        title: currentSongData.name,
+        artist: artistText,
+        album: currentSongData.album || '',
+        artwork: [
+            { src: currentSongData.image?.medium || '', sizes: '500x500', type: 'image/jpeg' }
+        ]
+    });
+    navigator.mediaSession.setActionHandler('play', () => audio.play());
+    navigator.mediaSession.setActionHandler('pause', () => audio.pause());
+    navigator.mediaSession.setActionHandler('previoustrack', prevSong);
+    navigator.mediaSession.setActionHandler('nexttrack', nextSong);
+});
 audio.addEventListener('pause', updatePlayBtn);
 audio.addEventListener('ended', nextSong);
 

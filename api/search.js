@@ -4,7 +4,8 @@ const HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
     'Accept': 'application/json',
     'Referer': 'https://www.jiosaavn.com/',
-    'Origin': 'https://www.jiosaavn.com'
+    'Origin': 'https://www.jiosaavn.com',
+    'Cookie': 'L=hindi%2Cenglish%2Cpunjabi%2Ctamil%2Ctelugu'
 };
 
 function cleanText(text) {
@@ -33,6 +34,8 @@ module.exports = async (req, res) => {
         // Clean response
         const start = text.indexOf('{');
         if (start > 0) text = text.substring(start);
+        const end = text.lastIndexOf('}');
+        if (end > 0 && end < text.length - 1) text = text.substring(0, end + 1);
 
         const data = JSON.parse(text);
 
@@ -40,18 +43,19 @@ module.exports = async (req, res) => {
             return res.json({ success: true, results: [], total: 0 });
         }
 
-        // Return only what's needed for display
         const results = data.results.map(song => ({
             id: song.id,
             name: cleanText(song.song || song.title),
             album: cleanText(song.album),
             artists: cleanText(song.primary_artists || song.singers),
-            duration: song.duration,
-            year: song.year,
-            language: song.language,
+            duration: parseInt(song.duration) || 0,
+            year: song.year || '',
+            language: song.language || '',
             hasLyrics: song.has_lyrics === 'true',
             image: song.image || '',
-            albumId: song.albumid
+            albumId: song.albumid || '',
+            disabled: song.disabled === 'true',
+            explicit: song.explicit_content === 1
         }));
 
         return res.json({
