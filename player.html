@@ -1,456 +1,733 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>JioSaavn URL Decryptor & Player</title>
+    <title>JioSaavn Player</title>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
         * {
-            font-family: system-ui;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
             box-sizing: border-box;
+            margin: 0;
+            padding: 0;
         }
         body {
-            max-width: 700px;
-            margin: 2rem auto;
-            padding: 0 1rem;
             background: #0a0a0a;
             color: #fff;
+            min-height: 100vh;
         }
-        h1 {
+        .container {
+            max-width: 700px;
+            margin: 0 auto;
+            padding: 1rem;
+            padding-bottom: 200px;
+        }
+
+        /* Header */
+        .header {
             text-align: center;
-            margin-bottom: 2rem;
+            padding: 2rem 0 1rem;
         }
-        .input-group {
+        .header h1 {
+            font-size: 28px;
+            background: linear-gradient(135deg, #1db954, #1ed760);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .header p {
+            color: #666;
+            font-size: 14px;
+            margin-top: 4px;
+        }
+
+        /* Search */
+        .search-box {
             display: flex;
             gap: 10px;
-            margin-bottom: 1rem;
+            margin: 1.5rem 0;
+            position: sticky;
+            top: 0;
+            background: #0a0a0a;
+            padding: 10px 0;
+            z-index: 100;
         }
-        input {
+        .search-box input {
             flex: 1;
-            padding: 14px;
+            padding: 14px 18px;
             font-size: 16px;
-            border: 2px solid #333;
-            border-radius: 10px;
-            background: #1a1a1a;
+            border: 2px solid #222;
+            border-radius: 12px;
+            background: #111;
             color: #fff;
             outline: none;
+            transition: border-color 0.2s;
         }
-        input:focus {
+        .search-box input:focus {
             border-color: #1db954;
         }
-        button {
+        .search-box button {
             padding: 14px 24px;
             font-size: 16px;
             border: none;
-            border-radius: 10px;
+            border-radius: 12px;
             background: #1db954;
             color: #fff;
             cursor: pointer;
             font-weight: 600;
+            transition: background 0.2s;
         }
-        button:hover {
+        .search-box button:hover {
             background: #1ed760;
         }
-        .result {
-            background: #1a1a1a;
-            border-radius: 10px;
-            padding: 1rem;
-            margin: 1rem 0;
+
+        /* Song Cards */
+        .song-card {
+            display: flex;
+            gap: 14px;
+            padding: 12px;
+            border-radius: 12px;
+            cursor: pointer;
+            align-items: center;
+            transition: background 0.2s;
+        }
+        .song-card:hover {
+            background: #151515;
+        }
+        .song-card.active {
+            background: #151515;
+            border: 1px solid #1db95433;
+        }
+        .song-card img {
+            width: 55px;
+            height: 55px;
+            border-radius: 8px;
+            object-fit: cover;
+        }
+        .song-card .info {
+            flex: 1;
+            min-width: 0;
+        }
+        .song-card .title {
+            font-weight: 600;
+            font-size: 15px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .song-card .artist {
+            color: #888;
+            font-size: 13px;
+            margin-top: 3px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .song-card .duration {
+            color: #555;
+            font-size: 13px;
+            flex-shrink: 0;
+        }
+
+        /* Now Playing Bar */
+        .player-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #181818;
+            border-top: 1px solid #282828;
+            padding: 12px 1rem;
+            z-index: 1000;
+            display: none;
+        }
+        .player-bar.show {
+            display: block;
+        }
+        .player-inner {
+            max-width: 700px;
+            margin: 0 auto;
+        }
+        .player-info {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .player-info img {
+            width: 50px;
+            height: 50px;
+            border-radius: 8px;
+        }
+        .player-info .details {
+            flex: 1;
+            min-width: 0;
+        }
+        .player-info .details .title {
+            font-weight: 600;
+            font-size: 14px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .player-info .details .artist {
+            color: #888;
+            font-size: 12px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .player-controls {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 8px;
+        }
+        .player-controls button {
+            background: none;
+            border: none;
+            color: #fff;
+            font-size: 20px;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 50%;
+            transition: background 0.2s;
+        }
+        .player-controls button:hover {
+            background: #333;
+        }
+        .play-btn {
+            background: #1db954 !important;
+            border-radius: 50% !important;
+            width: 42px;
+            height: 42px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .play-btn:hover {
+            background: #1ed760 !important;
+        }
+
+        /* Progress Bar */
+        .progress-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .progress-time {
+            font-size: 11px;
+            color: #888;
+            min-width: 35px;
+        }
+        .progress-bar {
+            flex: 1;
+            height: 4px;
+            background: #333;
+            border-radius: 2px;
+            cursor: pointer;
+            position: relative;
+        }
+        .progress-bar:hover {
+            height: 6px;
+        }
+        .progress-fill {
+            height: 100%;
+            background: #1db954;
+            border-radius: 2px;
+            width: 0%;
+            transition: width 0.1s;
+        }
+
+        /* Quality & Actions */
+        .player-actions {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            margin-top: 8px;
+            flex-wrap: wrap;
+        }
+        .quality-btn {
+            padding: 4px 10px;
+            font-size: 11px;
+            border: 1px solid #333;
+            border-radius: 6px;
+            background: transparent;
+            color: #888;
+            cursor: pointer;
+        }
+        .quality-btn.active {
+            background: #1db954;
+            border-color: #1db954;
+            color: #fff;
+        }
+        .action-btn {
+            padding: 4px 10px;
+            font-size: 11px;
+            border: 1px solid #333;
+            border-radius: 6px;
+            background: transparent;
+            color: #888;
+            cursor: pointer;
+        }
+        .action-btn:hover {
+            border-color: #1db954;
+            color: #1db954;
+        }
+
+        /* Lyrics Modal */
+        .lyrics-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.9);
+            z-index: 2000;
+            overflow-y: auto;
+            padding: 2rem 1rem;
+        }
+        .lyrics-modal.show {
+            display: block;
+        }
+        .lyrics-content {
+            max-width: 600px;
+            margin: 0 auto;
+            text-align: center;
+        }
+        .lyrics-content h2 {
+            margin-bottom: 1.5rem;
+            color: #1db954;
+        }
+        .lyrics-text {
+            white-space: pre-wrap;
+            line-height: 2;
+            font-size: 16px;
+            color: #ccc;
+        }
+        .lyrics-close {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            font-size: 24px;
+            background: #333;
+            border: none;
+            color: #fff;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        /* Loading & Status */
+        .status {
+            text-align: center;
+            padding: 2rem;
+            color: #555;
+        }
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #333;
+            border-top-color: #1db954;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Manual Decrypt */
+        .manual-section {
+            margin-top: 2rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid #1a1a1a;
+        }
+        .manual-section h3 {
+            color: #555;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+        .decrypt-result {
+            background: #111;
+            border-radius: 8px;
+            padding: 12px;
+            margin-top: 10px;
+            font-size: 12px;
+            color: #1db954;
             word-break: break-all;
             display: none;
         }
-        .result.show {
+        .decrypt-result.show {
             display: block;
-        }
-        .label {
-            color: #888;
-            font-size: 14px;
-            margin-bottom: 4px;
-        }
-        .url {
-            color: #1db954;
-            font-size: 14px;
-            margin: 8px 0;
-        }
-        audio {
-            width: 100%;
-            margin: 1rem 0;
-            border-radius: 10px;
-        }
-        .quality-btns {
-            display: flex;
-            gap: 8px;
-            margin: 1rem 0;
-            flex-wrap: wrap;
-        }
-        .quality-btns button {
-            padding: 8px 16px;
-            font-size: 14px;
-            background: #333;
-        }
-        .quality-btns button.active {
-            background: #1db954;
-        }
-        .quality-btns button:hover {
-            background: #1ed760;
-        }
-        .copy-btn {
-            padding: 6px 14px;
-            font-size: 12px;
-            background: #333;
-            margin-left: 8px;
-        }
-        .error {
-            color: #ff4444;
-            margin: 1rem 0;
-            display: none;
-        }
-        .search-section {
-            margin-bottom: 2rem;
-            padding-bottom: 2rem;
-            border-bottom: 1px solid #333;
-        }
-        .song-card {
-            display: flex;
-            gap: 12px;
-            padding: 12px;
-            border-radius: 10px;
-            cursor: pointer;
-            align-items: center;
-            margin: 4px 0;
-        }
-        .song-card:hover {
-            background: #1a1a1a;
-        }
-        .song-card img {
-            width: 50px;
-            height: 50px;
-            border-radius: 6px;
-        }
-        .song-info {
-            flex: 1;
-        }
-        .song-title {
-            font-weight: 600;
-            margin: 0;
-        }
-        .song-artist {
-            margin: 2px 0;
-            color: #888;
-            font-size: 14px;
-        }
-        .now-playing {
-            text-align: center;
-            margin: 1rem 0;
-        }
-        .now-playing img {
-            width: 200px;
-            height: 200px;
-            border-radius: 12px;
-            margin-bottom: 1rem;
-        }
-        .now-playing .song-title {
-            font-size: 20px;
-        }
-        .now-playing .song-artist {
-            color: #888;
-        }
-        .hidden {
-            display: none;
         }
     </style>
 </head>
 <body>
 
-<h1>🎵 JioSaavn Decryptor & Player</h1>
+<div class="container">
+    <div class="header">
+        <h1>🎵 JioSaavn Player</h1>
+        <p>Self-hosted • No third party API • Your own Vercel backend</p>
+    </div>
 
-<!-- SEARCH SECTION -->
-<div class="search-section">
-    <div class="input-group">
-        <input type="search" id="search" placeholder="Search for any song...">
+    <!-- Search -->
+    <div class="search-box">
+        <input type="search" id="searchInput" placeholder="Search songs, artists, albums...">
         <button onclick="doSearch()">Search</button>
     </div>
-    <div id="searchResults"></div>
+
+    <!-- Results -->
+    <div id="results"></div>
+
+    <!-- Manual Decrypt -->
+    <div class="manual-section">
+        <h3>🔓 Manual Decrypt</h3>
+        <div class="search-box" style="position:static; padding:0;">
+            <input type="text" id="manualInput" placeholder="Paste encrypted_media_url...">
+            <button onclick="manualDecrypt()">Decrypt</button>
+        </div>
+        <div class="decrypt-result" id="decryptResult"></div>
+    </div>
 </div>
 
-<!-- NOW PLAYING -->
-<div id="nowPlaying" class="now-playing hidden"></div>
-
-<!-- MANUAL DECRYPT SECTION -->
-<h3>Or paste encrypted_media_url manually:</h3>
-<div class="input-group">
-    <input type="text" id="encryptedUrl" placeholder="Paste encrypted_media_url here...">
-    <button onclick="decryptAndPlay()">Decrypt & Play</button>
+<!-- Player Bar -->
+<div class="player-bar" id="playerBar">
+    <div class="player-inner">
+        <div class="player-info">
+            <img id="playerImg" src="" alt="">
+            <div class="details">
+                <div class="title" id="playerTitle">-</div>
+                <div class="artist" id="playerArtist">-</div>
+            </div>
+        </div>
+        <div class="player-controls">
+            <button onclick="playPrev()">⏮</button>
+            <button class="play-btn" id="playPauseBtn" onclick="togglePlayPause()">▶</button>
+            <button onclick="playNext()">⏭</button>
+        </div>
+        <div class="progress-container">
+            <span class="progress-time" id="currentTime">0:00</span>
+            <div class="progress-bar" id="progressBar" onclick="seek(event)">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <span class="progress-time" id="totalTime">0:00</span>
+        </div>
+        <div class="player-actions">
+            <button class="quality-btn active" data-q="320kbps">320k</button>
+            <button class="quality-btn" data-q="160kbps">160k</button>
+            <button class="quality-btn" data-q="96kbps">96k</button>
+            <button class="quality-btn" data-q="48kbps">48k</button>
+            <button class="action-btn" id="lyricsBtn" onclick="showLyrics()">📝 Lyrics</button>
+            <button class="action-btn" onclick="copyCurrentUrl()">📋 Copy URL</button>
+            <a class="action-btn" id="dlBtn" href="#" download style="text-decoration:none">⬇ Download</a>
+        </div>
+    </div>
 </div>
 
-<!-- QUALITY SELECTOR -->
-<div class="quality-btns" id="qualityBtns">
-    <span style="color:#888; line-height:35px;">Quality:</span>
-    <button class="active" data-quality="320">320kbps</button>
-    <button data-quality="160">160kbps</button>
-    <button data-quality="96">96kbps</button>
-    <button data-quality="48">48kbps</button>
+<!-- Hidden Audio Element -->
+<audio id="audio"></audio>
+
+<!-- Lyrics Modal -->
+<div class="lyrics-modal" id="lyricsModal">
+    <button class="lyrics-close" onclick="closeLyrics()">✕</button>
+    <div class="lyrics-content">
+        <h2 id="lyricsTitle"></h2>
+        <div class="lyrics-text" id="lyricsText"></div>
+    </div>
 </div>
-
-<!-- RESULT -->
-<div class="result" id="result">
-    <div class="label">Decrypted Stream URL:</div>
-    <div class="url" id="decryptedUrl"></div>
-    <button class="copy-btn" onclick="copyUrl()">📋 Copy URL</button>
-</div>
-
-<p class="error" id="error"></p>
-
-<!-- AUDIO PLAYER -->
-<audio id="player" controls></audio>
-
-<!-- CryptoJS Library -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
 
 <script>
-// ===== THE SECRET KEY =====
-// This is JioSaavn's AES-128-ECB decryption key
-// It has never changed since 2018
-const JIOSAAVN_KEY = '38346591';
+// ============ CONFIG ============
+// When deployed to Vercel, API is on the same domain
+// No CORS issues at all!
+const API_BASE = window.location.origin + '/api';
 
-// Full key string
-const KEY_STRING = '38346591';
-const FULL_KEY = CryptoJS.enc.Utf8.parse('38346591');
+// ============ STATE ============
+const audio = document.getElementById('audio');
+let songs = [];
+let currentIndex = -1;
+let currentQuality = '320kbps';
+let currentUrls = {};
 
-// Wait... the actual full key is 16 bytes
-const DECRYPT_KEY = CryptoJS.enc.Utf8.parse('3834659127733675');
+// ============ SEARCH ============
+const searchInput = document.getElementById('searchInput');
+let searchTimer;
 
-let currentQuality = '320';
-let currentDecryptedBaseUrl = '';
-
-// ===== DECRYPTION FUNCTION =====
-function decryptUrl(encryptedUrl) {
-    try {
-        // The encrypted URL is base64 encoded AES-128-ECB encrypted text
-        const decrypted = CryptoJS.AES.decrypt(
-            { ciphertext: CryptoJS.enc.Base64.parse(encryptedUrl) },
-            DECRYPT_KEY,
-            {
-                mode: CryptoJS.mode.ECB,
-                padding: CryptoJS.pad.Pkcs7
-            }
-        );
-
-        const decryptedText = decrypted.toString(CryptoJS.enc.Utf8);
-
-        if (!decryptedText) {
-            throw new Error('Decryption returned empty string');
-        }
-
-        return decryptedText;
-
-    } catch (e) {
-        console.error('Decryption failed:', e);
-        return null;
-    }
-}
-
-// ===== REPLACE QUALITY IN URL =====
-function getQualityUrl(baseUrl, quality) {
-    // URL format: https://aac.saavncdn.com/665/xxxxx_320.mp4
-    // Replace _320 with desired quality
-    return baseUrl.replace(/_\d+\.mp4/, `_${quality}.mp4`)
-                  .replace(/_\d+\.m4a/, `_${quality}.m4a`);
-}
-
-// ===== DECRYPT AND PLAY (Manual) =====
-function decryptAndPlay() {
-    const encrypted = document.getElementById('encryptedUrl').value.trim();
-    const error = document.getElementById('error');
-    const result = document.getElementById('result');
-
-    if (!encrypted) {
-        error.textContent = 'Please paste an encrypted_media_url';
-        error.style.display = 'block';
-        return;
-    }
-
-    error.style.display = 'none';
-
-    const decrypted = decryptUrl(encrypted);
-
-    if (!decrypted) {
-        error.textContent = 'Decryption failed. Make sure you pasted the correct encrypted_media_url';
-        error.style.display = 'block';
-        result.classList.remove('show');
-        return;
-    }
-
-    currentDecryptedBaseUrl = decrypted;
-    const finalUrl = getQualityUrl(decrypted, currentQuality);
-
-    document.getElementById('decryptedUrl').textContent = finalUrl;
-    result.classList.add('show');
-
-    // Play it
-    const player = document.getElementById('player');
-    player.src = finalUrl;
-    player.play();
-}
-
-// ===== QUALITY BUTTONS =====
-document.querySelectorAll('.quality-btns button').forEach(btn => {
-    btn.addEventListener('click', () => {
-        document.querySelectorAll('.quality-btns button').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        currentQuality = btn.dataset.quality;
-
-        if (currentDecryptedBaseUrl) {
-            const finalUrl = getQualityUrl(currentDecryptedBaseUrl, currentQuality);
-            document.getElementById('decryptedUrl').textContent = finalUrl;
-            document.getElementById('player').src = finalUrl;
-            document.getElementById('player').play();
-        }
-    });
+searchInput.addEventListener('input', () => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(doSearch, 400);
 });
 
-// ===== COPY URL =====
-function copyUrl() {
-    const url = document.getElementById('decryptedUrl').textContent;
-    navigator.clipboard.writeText(url);
-    const btn = document.querySelector('.copy-btn');
-    btn.textContent = '✅ Copied!';
-    setTimeout(() => btn.textContent = '📋 Copy URL', 2000);
-}
-
-// ===== SEARCH =====
-let searchTimeout;
-document.getElementById('search').addEventListener('input', () => {
-    clearTimeout(searchTimeout);
-    searchTimeout = setTimeout(doSearch, 400);
-});
-
-document.getElementById('search').addEventListener('keydown', (e) => {
+searchInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') doSearch();
 });
 
 async function doSearch() {
-    const query = document.getElementById('search').value.trim();
-    if (!query) return;
+    const q = searchInput.value.trim();
+    if (!q) return;
 
-    const container = document.getElementById('searchResults');
-    container.innerHTML = '<p style="color:#888">Searching...</p>';
+    const container = document.getElementById('results');
+    container.innerHTML = '<div class="status"><span class="loading-spinner"></span>Searching...</div>';
 
     try {
-        // Use JioSaavn's internal API directly
-        const res = await fetch(`https://www.jiosaavn.com/api.php?__call=autocomplete.get&query=${encodeURIComponent(query)}&_format=json&_marker=0&ctx=web6dot0`);
+        const res = await fetch(`${API_BASE}/search?q=${encodeURIComponent(q)}&limit=20`);
         const data = await res.json();
 
+        if (!data.success || !data.results || data.results.length === 0) {
+            container.innerHTML = '<div class="status">No results found</div>';
+            return;
+        }
+
+        songs = data.results;
         container.innerHTML = '';
 
-        if (data.songs && data.songs.data) {
-            data.songs.data.forEach(song => {
-                const card = document.createElement('div');
-                card.className = 'song-card';
-                card.innerHTML = `
-                    <img src="${song.image.replace('150x150', '50x50')}" alt="">
-                    <div class="song-info">
-                        <p class="song-title">${song.title}</p>
-                        <p class="song-artist">${song.more_info?.singers || song.description || ''}</p>
-                    </div>
-                `;
-                card.addEventListener('click', () => loadSong(song.id));
-                container.appendChild(card);
-            });
-        }
+        songs.forEach((song, i) => {
+            const card = document.createElement('div');
+            card.className = 'song-card';
+            card.id = `song-${i}`;
 
-        if (!data.songs || !data.songs.data || data.songs.data.length === 0) {
-            container.innerHTML = '<p style="color:#888">No results found</p>';
-        }
+            const mins = Math.floor(song.duration / 60);
+            const secs = String(song.duration % 60).padStart(2, '0');
 
-    } catch (e) {
-        // Fallback to saavn.dev API
-        try {
-            const res = await fetch(`https://saavn.dev/api/search/songs?q=${encodeURIComponent(query)}&limit=10`);
-            const data = await res.json();
-            container.innerHTML = '';
+            card.innerHTML = `
+                <img src="${song.image?.low || ''}" alt="">
+                <div class="info">
+                    <div class="title">${song.name}</div>
+                    <div class="artist">${song.artists} • ${song.album}</div>
+                </div>
+                <div class="duration">${mins}:${secs}</div>
+            `;
 
-            if (data.data && data.data.results) {
-                data.data.results.forEach(song => {
-                    const card = document.createElement('div');
-                    card.className = 'song-card';
-                    card.innerHTML = `
-                        <img src="${song.image[1]?.url || ''}" alt="">
-                        <div class="song-info">
-                            <p class="song-title">${song.name}</p>
-                            <p class="song-artist">${song.primaryArtists}</p>
-                        </div>
-                    `;
-                    card.addEventListener('click', () => {
-                        // Already has download URLs
-                        const streamUrl = song.downloadUrl.at(-1).url;
-                        showNowPlaying(song.name, song.primaryArtists, song.image[2]?.url);
-                        document.getElementById('player').src = streamUrl;
-                        document.getElementById('player').play();
-                        document.getElementById('decryptedUrl').textContent = streamUrl;
-                        document.getElementById('result').classList.add('show');
-                    });
-                    container.appendChild(card);
-                });
-            }
-        } catch (e2) {
-            container.innerHTML = '<p style="color:#ff4444">Search failed. Try again.</p>';
-        }
-    }
-}
-
-// ===== LOAD SONG BY ID =====
-async function loadSong(songId) {
-    try {
-        const res = await fetch(`https://www.jiosaavn.com/api.php?__call=song.getDetails&pids=${songId}&_format=json&_marker=0`);
-        const data = await res.json();
-
-        const song = data[songId] || Object.values(data)[0];
-
-        if (!song || !song.encrypted_media_url) {
-            alert('Could not load song');
-            return;
-        }
-
-        // Decrypt the URL locally
-        const decrypted = decryptUrl(song.encrypted_media_url);
-
-        if (!decrypted) {
-            alert('Decryption failed');
-            return;
-        }
-
-        currentDecryptedBaseUrl = decrypted;
-        const finalUrl = getQualityUrl(decrypted, currentQuality);
-
-        // Show now playing
-        showNowPlaying(song.song, song.primary_artists, song.image?.replace('150x150', '500x500'));
-
-        // Show decrypted URL
-        document.getElementById('decryptedUrl').textContent = finalUrl;
-        document.getElementById('result').classList.add('show');
-        document.getElementById('encryptedUrl').value = song.encrypted_media_url;
-
-        // Play
-        const player = document.getElementById('player');
-        player.src = finalUrl;
-        player.play();
+            card.addEventListener('click', () => playSong(i));
+            container.appendChild(card);
+        });
 
     } catch (e) {
         console.error(e);
-        alert('Failed to load song. Try again.');
+        container.innerHTML = '<div class="status" style="color:#ff4444">Search failed. Check console.</div>';
     }
 }
 
-// ===== NOW PLAYING UI =====
-function showNowPlaying(title, artist, image) {
-    const np = document.getElementById('nowPlaying');
-    np.classList.remove('hidden');
-    np.innerHTML = `
-        ${image ? `<img src="${image}" alt="">` : ''}
-        <p class="song-title">${title || 'Unknown'}</p>
-        <p class="song-artist">${artist || 'Unknown'}</p>
-    `;
+// ============ PLAY SONG ============
+function playSong(index) {
+    const song = songs[index];
+    if (!song) return;
+
+    currentIndex = index;
+
+    // Highlight
+    document.querySelectorAll('.song-card').forEach(c => c.classList.remove('active'));
+    document.getElementById(`song-${index}`)?.classList.add('active');
+
+    // Build URL map
+    currentUrls = {};
+    if (song.downloadUrl) {
+        song.downloadUrl.forEach(item => {
+            currentUrls[item.quality] = item.url;
+        });
+    }
+
+    const streamUrl = currentUrls[currentQuality]
+        || currentUrls['320kbps']
+        || currentUrls['160kbps']
+        || currentUrls['96kbps']
+        || currentUrls['48kbps'];
+
+    if (!streamUrl) {
+        alert('No stream URL available');
+        return;
+    }
+
+    // Update player UI
+    document.getElementById('playerTitle').textContent = song.name;
+    document.getElementById('playerArtist').textContent = song.artists;
+    document.getElementById('playerImg').src = song.image?.medium || song.image?.low || '';
+    document.getElementById('playerBar').classList.add('show');
+    document.getElementById('dlBtn').href = streamUrl;
+    document.getElementById('lyricsBtn').style.display = song.hasLyrics ? 'inline-block' : 'none';
+
+    // Play
+    audio.src = streamUrl;
+    audio.play();
+    updatePlayPauseBtn();
 }
+
+// ============ CONTROLS ============
+function togglePlayPause() {
+    if (audio.paused) {
+        audio.play();
+    } else {
+        audio.pause();
+    }
+    updatePlayPauseBtn();
+}
+
+function updatePlayPauseBtn() {
+    document.getElementById('playPauseBtn').textContent = audio.paused ? '▶' : '⏸';
+}
+
+function playNext() {
+    if (currentIndex < songs.length - 1) {
+        playSong(currentIndex + 1);
+    }
+}
+
+function playPrev() {
+    if (currentIndex > 0) {
+        playSong(currentIndex - 1);
+    }
+}
+
+audio.addEventListener('play', updatePlayPauseBtn);
+audio.addEventListener('pause', updatePlayPauseBtn);
+audio.addEventListener('ended', playNext);
+
+// ============ PROGRESS BAR ============
+audio.addEventListener('timeupdate', () => {
+    if (!audio.duration) return;
+
+    const pct = (audio.currentTime / audio.duration) * 100;
+    document.getElementById('progressFill').style.width = pct + '%';
+    document.getElementById('currentTime').textContent = formatTime(audio.currentTime);
+    document.getElementById('totalTime').textContent = formatTime(audio.duration);
+});
+
+function seek(e) {
+    const bar = document.getElementById('progressBar');
+    const rect = bar.getBoundingClientRect();
+    const pct = (e.clientX - rect.left) / rect.width;
+    audio.currentTime = pct * audio.duration;
+}
+
+function formatTime(sec) {
+    const m = Math.floor(sec / 60);
+    const s = String(Math.floor(sec % 60)).padStart(2, '0');
+    return `${m}:${s}`;
+}
+
+// ============ QUALITY SWITCH ============
+document.querySelectorAll('.quality-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.quality-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentQuality = btn.dataset.q;
+
+        const url = currentUrls[currentQuality];
+        if (url) {
+            const time = audio.currentTime;
+            const playing = !audio.paused;
+            audio.src = url;
+            audio.currentTime = time;
+            if (playing) audio.play();
+            document.getElementById('dlBtn').href = url;
+        }
+    });
+});
+
+// ============ COPY URL ============
+function copyCurrentUrl() {
+    const url = currentUrls[currentQuality] || audio.src;
+    navigator.clipboard.writeText(url).then(() => {
+        alert('URL copied!');
+    });
+}
+
+// ============ LYRICS ============
+async function showLyrics() {
+    const song = songs[currentIndex];
+    if (!song) return;
+
+    const modal = document.getElementById('lyricsModal');
+    document.getElementById('lyricsTitle').textContent = song.name;
+    document.getElementById('lyricsText').textContent = 'Loading lyrics...';
+    modal.classList.add('show');
+
+    try {
+        const res = await fetch(`${API_BASE}/lyrics?id=${song.id}`);
+        const data = await res.json();
+
+        if (data.success) {
+            document.getElementById('lyricsText').textContent = data.data.lyrics;
+        } else {
+            document.getElementById('lyricsText').textContent = 'Lyrics not available for this song.';
+        }
+    } catch (e) {
+        document.getElementById('lyricsText').textContent = 'Failed to load lyrics.';
+    }
+}
+
+function closeLyrics() {
+    document.getElementById('lyricsModal').classList.remove('show');
+}
+
+// ============ MANUAL DECRYPT ============
+async function manualDecrypt() {
+    const encrypted = document.getElementById('manualInput').value.trim();
+    if (!encrypted) return;
+
+    const result = document.getElementById('decryptResult');
+
+    try {
+        const res = await fetch(`${API_BASE}/decrypt?url=${encodeURIComponent(encrypted)}`);
+        const data = await res.json();
+
+        if (data.success) {
+            let html = '<strong>Decrypted URLs:</strong><br><br>';
+            data.allQualities.forEach(q => {
+                html += `${q.quality}: <a href="${q.url}" target="_blank" style="color:#1db954">${q.url}</a><br>`;
+            });
+            result.innerHTML = html;
+            result.classList.add('show');
+
+            // Also play the 320kbps
+            const url320 = data.allQualities.find(q => q.quality === '320kbps')?.url || data.decryptedUrl;
+            audio.src = url320;
+            audio.play();
+
+            document.getElementById('playerTitle').textContent = 'Manual Track';
+            document.getElementById('playerArtist').textContent = 'Decrypted';
+            document.getElementById('playerImg').src = '';
+            document.getElementById('playerBar').classList.add('show');
+            updatePlayPauseBtn();
+
+        } else {
+            result.textContent = 'Decryption failed.';
+            result.classList.add('show');
+        }
+    } catch (e) {
+        result.textContent = 'Error: ' + e.message;
+        result.classList.add('show');
+    }
+}
+
+// ============ KEYBOARD SHORTCUTS ============
+document.addEventListener('keydown', (e) => {
+    if (e.target.tagName === 'INPUT') return;
+
+    switch(e.code) {
+        case 'Space':
+            e.preventDefault();
+            togglePlayPause();
+            break;
+        case 'ArrowRight':
+            audio.currentTime += 5;
+            break;
+        case 'ArrowLeft':
+            audio.currentTime -= 5;
+            break;
+        case 'KeyN':
+            playNext();
+            break;
+        case 'KeyP':
+            playPrev();
+            break;
+    }
+});
 </script>
 
 </body>
