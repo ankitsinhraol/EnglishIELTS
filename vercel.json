@@ -1,23 +1,21 @@
 {
-    "version": 2,
-    "builds": [
+    "outputDirectory": "public",
+    "rewrites": [
         {
-            "src": "api/**/*.js",
-            "use": "@vercel/node"
+            "source": "/api/search",
+            "destination": "/api/search"
         },
         {
-            "src": "public/**",
-            "use": "@vercel/static"
-        }
-    ],
-    "routes": [
-        {
-            "src": "/api/(.*)",
-            "dest": "/api/$1"
+            "source": "/api/song",
+            "destination": "/api/song"
         },
         {
-            "src": "/(.*)",
-            "dest": "/public/$1"
+            "source": "/api/decrypt",
+            "destination": "/api/decrypt"
+        },
+        {
+            "source": "/api/lyrics",
+            "destination": "/api/lyrics"
         }
     ],
     "headers": [
