@@ -38,30 +38,14 @@ function cleanText(text) {
                .replace(/<[^>]*>/g, '');
 }
 
-function formatSong(song) {
-    return {
-        id: song.id,
-        name: cleanText(song.song || song.title),
-        album: cleanText(song.album),
-        year: song.year,
-        duration: song.duration,
-        language: song.language,
-        artists: cleanText(song.primary_artists || song.singers),
-        image: {
-            low: song.image?.replace('150x150', '150x150'),
-            medium: song.image?.replace('150x150', '500x500'),
-            high: song.image?.replace('150x150', '500x500')
-        },
-        downloadUrl: getDownloadUrls(song.encrypted_media_url),
-        hasLyrics: song.has_lyrics === 'true',
-        playCount: parseInt(song.play_count) || 0,
-        albumId: song.albumid,
-        permaUrl: song.perma_url
-    };
-}
+const HEADERS = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+    'Accept': 'application/json',
+    'Referer': 'https://www.jiosaavn.com/',
+    'Origin': 'https://www.jiosaavn.com'
+};
 
 module.exports = async (req, res) => {
-    // Handle CORS preflight
     if (req.method === 'OPTIONS') {
         return res.status(200).end();
     }
@@ -69,27 +53,37 @@ module.exports = async (req, res) => {
     const { q, limit = 20, page = 1 } = req.query;
 
     if (!q) {
-        return res.status(400).json({ 
-            success: false, 
-            error: 'Missing search query. Use ?q=song+name' 
+        return res.status(400).json({
+            success: false,
+            error: 'Missing search query. Use ?q=song+name'
         });
     }
 
     try {
-        const url = `https://www.jiosaavn.com/api.php?__call=search.getResults&_format=json&_marker=0&q=${encodeURIComponent(q)}&n=${limit}&p=${page}`;
+        // ===== STEP 1: Search to get song IDs =====
+        const searchUrl = `https://www.jiosaavn.com/api.php?__call=search.getResults&_format=json&_marker=0&q=${encodeURIComponent(q)}&n=${limit}&p=${page}`;
 
-        const response = await fetch(url, {
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                'Accept': 'application/json',
-                'Referer': 'https://www.jiosaavn.com/',
-                'Origin': 'https://www.jiosaavn.com'
-            }
-        });
+        const searchRes = await fetch(searchUrl, { headers: HEADERS });
+        let searchText = await searchRes.text();
 
-        const data = await response.json();
+        // JioSaavn sometimes returns weird response, clean it
+        // Remove anything before the first { 
+        const jsonStart = searchText.indexOf('{');
+        if (jsonStart > 0) {
+            searchText = searchText.substring(jsonStart);
+        }
 
-        if (!data.results) {
+        let searchData;
+        try {
+            searchData = JSON.parse(searchText);
+        } catch (e) {
+            return res.status(500).json({
+                success: false,
+                error: 'Failed to parse search response'
+            });
+        }
+
+        if (!searchData.results || searchData.results.length === 0) {
             return res.status(200).json({
                 success: true,
                 results: [],
@@ -97,20 +91,74 @@ module.exports = async (req, res) => {
             });
         }
 
-        const songs = data.results.map(formatSong);
+        // ===== STEP 2: Get all song IDs =====
+        const songIds = searchData.results.map(song => song.id).join(',');
+
+        // ===== STEP 3: Fetch FULL details for ALL songs =====
+        const detailsUrl = `https://www.jiosaavn.com/api.php?__call=song.getDetails&pids=${songIds}&_format=json&_marker=0`;
+
+        const detailsRes = await fetch(detailsUrl, { headers: HEADERS });
+        let detailsText = await detailsRes.text();
+
+        // Clean response
+        const detailsJsonStart = detailsText.indexOf('{');
+        if (detailsJsonStart > 0) {
+            detailsText = detailsText.substring(detailsJsonStart);
+        }
+
+        let detailsData;
+        try {
+            detailsData = JSON.parse(detailsText);
+        } catch (e) {
+            return res.status(500).json({
+                success: false,
+                error: 'Failed to parse song details'
+            });
+        }
+
+        // ===== STEP 4: Format all songs with full data =====
+        const songs = Object.values(detailsData).map(song => {
+            if (!song || !song.id) return null;
+
+            return {
+                id: song.id,
+                name: cleanText(song.song || song.title),
+                album: cleanText(song.album),
+                year: song.year,
+                duration: song.duration,
+                language: song.language,
+                artists: cleanText(song.primary_artists || song.singers),
+                featuredArtists: cleanText(song.featured_artists),
+                image: {
+                    low: song.image?.replace('150x150', '150x150') || '',
+                    medium: song.image?.replace('150x150', '500x500') || '',
+                    high: song.image?.replace('150x150', '500x500') || ''
+                },
+                downloadUrl: getDownloadUrls(song.encrypted_media_url),
+                hasLyrics: song.has_lyrics === 'true',
+                playCount: parseInt(song.play_count) || 0,
+                albumId: song.albumid,
+                label: song.label,
+                copyright: song.copyright_text,
+                permaUrl: song.perma_url,
+                is320kbps: song['320kbps'] === 'true',
+                releaseDate: song.release_date,
+                disabled: song.disabled === 'true'
+            };
+        }).filter(Boolean);
 
         return res.status(200).json({
             success: true,
             query: q,
-            total: data.total || songs.length,
+            total: searchData.total || songs.length,
             results: songs
         });
 
     } catch (error) {
         console.error('Search error:', error);
-        return res.status(500).json({ 
-            success: false, 
-            error: 'Search failed' 
+        return res.status(500).json({
+            success: false,
+            error: 'Search failed: ' + error.message
         });
     }
 };
