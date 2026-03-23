@@ -32,10 +32,10 @@
             max-width: 800px;
             margin: 0 auto;
             padding: 1rem;
-            padding-bottom: 220px;
+            padding-bottom: 240px;
         }
 
-        /* ===== HEADER ===== */
+        /* Header */
         .header {
             text-align: center;
             padding: 1.5rem 0;
@@ -53,7 +53,7 @@
             margin-top: 4px;
         }
 
-        /* ===== SEARCH ===== */
+        /* Search */
         .search-wrapper {
             position: sticky;
             top: 0;
@@ -83,7 +83,7 @@
             color: var(--text-dimmer);
         }
 
-        /* ===== TABS ===== */
+        /* Tabs */
         .tabs {
             display: flex;
             gap: 8px;
@@ -108,7 +108,7 @@
             font-weight: 600;
         }
 
-        /* ===== SONG LIST ===== */
+        /* Song List */
         .song-list {
             display: flex;
             flex-direction: column;
@@ -196,7 +196,7 @@
             text-align: right;
         }
 
-        /* ===== PLAYER BAR ===== */
+        /* Player Bar */
         .player-bar {
             position: fixed;
             bottom: 0;
@@ -216,8 +216,6 @@
             margin: 0 auto;
             padding: 10px 1rem 8px;
         }
-
-        /* Player Top Row */
         .player-top {
             display: flex;
             gap: 14px;
@@ -313,7 +311,6 @@
             width: 0%;
             pointer-events: none;
         }
-        .seek-bar:hover .seek-fill { background: var(--accent-hover); }
 
         /* Quality Row */
         .quality-row {
@@ -353,7 +350,7 @@
         }
         .action-link:hover { border-color: var(--accent); color: var(--accent); }
 
-        /* ===== LYRICS MODAL ===== */
+        /* Lyrics Modal */
         .modal-overlay {
             display: none;
             position: fixed;
@@ -398,15 +395,46 @@
             cursor: pointer;
         }
 
-        /* ===== STATUS ===== */
+        /* Manual Decrypt */
+        .manual-section {
+            margin-top: 2rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--border);
+        }
+        .manual-section h3 {
+            color: var(--text-dimmer);
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+        .decrypt-result {
+            background: var(--card);
+            border-radius: 10px;
+            padding: 1rem;
+            margin-top: 10px;
+            font-size: 12px;
+            word-break: break-all;
+            display: none;
+        }
+        .decrypt-result.show { display: block; }
+        .decrypt-result a {
+            color: var(--accent);
+            text-decoration: none;
+        }
+        .decrypt-result a:hover { text-decoration: underline; }
+
+        /* Status */
         .status {
             text-align: center;
             padding: 3rem 1rem;
             color: var(--text-dimmer);
         }
         .status.error { color: #ff4444; }
+        .section-title {
+            font-size: 22px;
+            font-weight: 700;
+            margin: 1.5rem 0 1rem;
+        }
 
-        /* ===== ANIMATIONS ===== */
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
@@ -421,13 +449,6 @@
             vertical-align: middle;
             margin-right: 8px;
         }
-
-        /* ===== SECTION ===== */
-        .section-title {
-            font-size: 22px;
-            font-weight: 700;
-            margin: 1.5rem 0 1rem;
-        }
     </style>
 </head>
 <body>
@@ -438,12 +459,14 @@
         <div class="tagline">Self-hosted streaming • No third party APIs</div>
     </div>
 
+    <!-- Search -->
     <div class="search-wrapper">
         <div class="search-bar">
             <input type="search" id="searchInput" placeholder="What do you want to listen to?">
         </div>
     </div>
 
+    <!-- Language Tabs -->
     <div class="tabs" id="tabs">
         <button class="tab active" data-lang="">All</button>
         <button class="tab" data-lang="hindi">Hindi</button>
@@ -453,8 +476,19 @@
         <button class="tab" data-lang="telugu">Telugu</button>
     </div>
 
+    <!-- Content -->
     <div id="content">
         <div class="status">Search for a song to get started</div>
+    </div>
+
+    <!-- Manual Decrypt -->
+    <div class="manual-section">
+        <h3>🔓 Manual Decrypt</h3>
+        <div class="search-bar" style="position:static; padding:0;">
+            <input type="text" id="manualInput" placeholder="Paste encrypted_media_url...">
+            <button style="padding:14px 24px;font-size:16px;border:none;border-radius:50px;background:var(--accent);color:#fff;cursor:pointer;font-weight:600;" onclick="manualDecrypt()">Decrypt</button>
+        </div>
+        <div class="decrypt-result" id="decryptResult"></div>
     </div>
 </div>
 
@@ -481,6 +515,7 @@
             <span class="time-label" id="durTime">0:00</span>
         </div>
         <div class="quality-row">
+            <button class="q-btn" data-q="12kbps">12k</button>
             <button class="q-btn" data-q="48kbps">48k</button>
             <button class="q-btn" data-q="96kbps">96k</button>
             <button class="q-btn" data-q="160kbps">160k</button>
@@ -514,7 +549,7 @@ const audio = document.getElementById('audio');
 let songs = [];
 let currentIndex = -1;
 let currentQuality = '320kbps';
-let currentUrls = {};
+let currentUrls = {};       // { "320kbps": "https://...", "160kbps": "https://..." }
 let currentSongData = null;
 let selectedLang = '';
 
@@ -548,8 +583,7 @@ async function doSearch() {
     content.innerHTML = '<div class="status"><span class="spinner"></span>Searching...</div>';
 
     try {
-        let url = `${API}/search?q=${encodeURIComponent(q)}&limit=30`;
-        const res = await fetch(url);
+        const res = await fetch(`${API}/search?q=${encodeURIComponent(q)}&limit=30`);
         const data = await res.json();
 
         if (!data.success || !data.results?.length) {
@@ -557,7 +591,6 @@ async function doSearch() {
             return;
         }
 
-        // Filter by language if selected
         let results = data.results;
         if (selectedLang) {
             const filtered = results.filter(s => s.language === selectedLang);
@@ -575,7 +608,7 @@ async function doSearch() {
 
 function renderSongs() {
     const content = document.getElementById('content');
-    content.innerHTML = `<div class="section-title">Results</div><div class="song-list" id="songList"></div>`;
+    content.innerHTML = '<div class="section-title">Results</div><div class="song-list" id="songList"></div>';
     const list = document.getElementById('songList');
 
     songs.forEach((song, i) => {
@@ -587,7 +620,7 @@ function renderSongs() {
 
         el.innerHTML = `
             <div class="song-num">${i === currentIndex ? '🔊' : i + 1}</div>
-            <img class="song-thumb" src="${song.image?.replace('150x150','150x150') || ''}" alt="" loading="lazy">
+            <img class="song-thumb" src="${song.image || ''}" alt="" loading="lazy">
             <div class="song-meta">
                 <div class="song-name">${song.name || 'Unknown'}</div>
                 <div class="song-artists">${song.artists || 'Unknown'}</div>
@@ -601,28 +634,27 @@ function renderSongs() {
     });
 }
 
-// ===== PLAY SONG (on click, fetch full details) =====
+// ===== PLAY SONG (fetch full details on click) =====
 async function handleSongClick(index) {
     const song = songs[index];
     if (!song) return;
 
-    // If same song clicked, just toggle play/pause
+    // Same song clicked = toggle play/pause
     if (index === currentIndex && audio.src) {
         togglePlay();
         return;
     }
 
     currentIndex = index;
-
-    // Update UI immediately
     highlightActive();
     showPlayerBar(song);
 
-    // Show loading state
+    // Show loading spinner on song item
     const el = document.getElementById(`s-${index}`);
     if (el) el.classList.add('loading');
 
     try {
+        // Fetch full song details with stream URLs from YOUR API
         const res = await fetch(`${API}/song?id=${song.id}`);
         const data = await res.json();
 
@@ -635,11 +667,12 @@ async function handleSongClick(index) {
 
         currentSongData = data.data;
 
-        // Build URL map from new response format
+        // Build URL map from downloadUrl array
+        // Response format: [{ quality: "320kbps", link: "https://..." }, ...]
         currentUrls = {};
         if (data.data.downloadUrl && data.data.downloadUrl.length > 0) {
             data.data.downloadUrl.forEach(item => {
-                currentUrls[item.quality] = item.url;
+                currentUrls[item.quality] = item.link;
             });
         }
 
@@ -649,6 +682,7 @@ async function handleSongClick(index) {
             || currentUrls['160kbps']
             || currentUrls['96kbps']
             || currentUrls['48kbps']
+            || currentUrls['12kbps']
             || currentUrls['preview']
             || null;
 
@@ -657,17 +691,8 @@ async function handleSongClick(index) {
             return;
         }
 
-        // Update player with full data
-        // Handle new artists format (object with primary, featured, music)
-        const artistText = typeof data.data.artists === 'object'
-            ? data.data.artists.primary
-            : data.data.artists;
-
-        document.getElementById('pTitle').textContent = data.data.name || '—';
-        document.getElementById('pArtist').textContent = artistText || '—';
-        document.getElementById('pImg').src = data.data.image?.medium || data.data.image?.low || '';
-        document.getElementById('lyricsLink').style.display = data.data.hasLyrics ? 'inline' : 'none';
-        document.getElementById('dlLink').href = streamUrl;
+        // Update player UI with full data
+        updatePlayerUI(data.data, streamUrl);
 
         // Play
         audio.src = streamUrl;
@@ -680,23 +705,31 @@ async function handleSongClick(index) {
         alert('Failed to load song. Try again.');
     }
 }
-// ===== PLAYER UI =====
-function showPlayerBar(song) {
-    const bar = document.getElementById('playerBar');
-    bar.classList.add('show');
-    document.getElementById('pTitle').textContent = song.name || '—';
-    document.getElementById('pArtist').textContent = song.artists || '—';
-    document.getElementById('pImg').src = song.image?.replace('150x150', '500x500') || '';
+
+// ===== GET ARTIST TEXT =====
+function getArtistText(artists) {
+    if (!artists) return 'Unknown';
+    if (typeof artists === 'string') return artists;
+    if (typeof artists === 'object') {
+        return artists.primary || artists.all || artists.featured || 'Unknown';
+    }
+    return 'Unknown';
 }
 
-function updatePlayerUI(data) {
+// ===== PLAYER UI =====
+function showPlayerBar(song) {
+    document.getElementById('playerBar').classList.add('show');
+    document.getElementById('pTitle').textContent = song.name || '—';
+    document.getElementById('pArtist').textContent = song.artists || '—';
+    document.getElementById('pImg').src = (song.image || '').replace('150x150', '500x500');
+}
+
+function updatePlayerUI(data, streamUrl) {
     document.getElementById('pTitle').textContent = data.name || '—';
-    document.getElementById('pArtist').textContent = data.artists || '—';
+    document.getElementById('pArtist').textContent = getArtistText(data.artists);
     document.getElementById('pImg').src = data.image?.medium || data.image?.low || '';
     document.getElementById('lyricsLink').style.display = data.hasLyrics ? 'inline' : 'none';
-
-    const url = currentUrls[currentQuality] || '';
-    document.getElementById('dlLink').href = url;
+    document.getElementById('dlLink').href = streamUrl || '#';
 }
 
 function highlightActive() {
@@ -730,27 +763,7 @@ function prevSong() {
     }
 }
 
-// Also update the Media Session handler
-audio.addEventListener('play', () => {
-    if (!currentSongData || !('mediaSession' in navigator)) return;
-
-    const artistText = typeof currentSongData.artists === 'object'
-        ? currentSongData.artists.primary
-        : currentSongData.artists;
-
-    navigator.mediaSession.metadata = new MediaMetadata({
-        title: currentSongData.name,
-        artist: artistText,
-        album: currentSongData.album || '',
-        artwork: [
-            { src: currentSongData.image?.medium || '', sizes: '500x500', type: 'image/jpeg' }
-        ]
-    });
-    navigator.mediaSession.setActionHandler('play', () => audio.play());
-    navigator.mediaSession.setActionHandler('pause', () => audio.pause());
-    navigator.mediaSession.setActionHandler('previoustrack', prevSong);
-    navigator.mediaSession.setActionHandler('nexttrack', nextSong);
-});
+audio.addEventListener('play', updatePlayBtn);
 audio.addEventListener('pause', updatePlayBtn);
 audio.addEventListener('ended', nextSong);
 
@@ -794,7 +807,7 @@ async function openLyrics() {
 
     const modal = document.getElementById('lyricsModal');
     document.getElementById('lyricTitle').textContent = currentSongData.name;
-    document.getElementById('lyricArtist').textContent = currentSongData.artists;
+    document.getElementById('lyricArtist').textContent = getArtistText(currentSongData.artists);
     document.getElementById('lyricText').textContent = 'Loading...';
     modal.classList.add('show');
 
@@ -803,9 +816,9 @@ async function openLyrics() {
         const data = await res.json();
         document.getElementById('lyricText').textContent = data.success
             ? data.data.lyrics
-            : 'Lyrics not available';
+            : 'Lyrics not available for this song.';
     } catch {
-        document.getElementById('lyricText').textContent = 'Failed to load lyrics';
+        document.getElementById('lyricText').textContent = 'Failed to load lyrics.';
     }
 }
 
@@ -819,9 +832,62 @@ function copyUrl() {
     if (!url) return;
     navigator.clipboard.writeText(url).then(() => {
         const el = document.querySelector('.action-link[onclick="copyUrl()"]');
+        const original = el.textContent;
         el.textContent = '✅ Copied!';
-        setTimeout(() => el.textContent = '📋 Copy URL', 1500);
+        setTimeout(() => el.textContent = original, 1500);
     });
+}
+
+// ===== MANUAL DECRYPT =====
+async function manualDecrypt() {
+    const encrypted = document.getElementById('manualInput').value.trim();
+    if (!encrypted) return;
+
+    const result = document.getElementById('decryptResult');
+    result.innerHTML = '<span class="spinner"></span> Decrypting...';
+    result.classList.add('show');
+
+    try {
+        const res = await fetch(`${API}/decrypt?url=${encodeURIComponent(encrypted)}`);
+        const data = await res.json();
+
+        if (data.success && data.downloadUrl) {
+            let html = '<strong style="color:#fff">Decrypted URLs:</strong><br><br>';
+            data.downloadUrl.forEach(item => {
+                html += `<strong style="color:#888">${item.quality}:</strong> <a href="${item.link}" target="_blank">${item.link}</a><br><br>`;
+            });
+            result.innerHTML = html;
+
+            // Also play 320kbps
+            const best = data.downloadUrl.find(d => d.quality === '320kbps')
+                || data.downloadUrl[data.downloadUrl.length - 1];
+
+            if (best) {
+                // Build currentUrls for quality switching
+                currentUrls = {};
+                data.downloadUrl.forEach(item => {
+                    currentUrls[item.quality] = item.link;
+                });
+
+                currentSongData = { name: 'Manual Track', artists: 'Decrypted', hasLyrics: false };
+                document.getElementById('pTitle').textContent = 'Manual Track';
+                document.getElementById('pArtist').textContent = 'Decrypted';
+                document.getElementById('pImg').src = '';
+                document.getElementById('playerBar').classList.add('show');
+                document.getElementById('lyricsLink').style.display = 'none';
+                document.getElementById('dlLink').href = best.link;
+
+                audio.src = best.link;
+                audio.play();
+                updatePlayBtn();
+            }
+
+        } else {
+            result.innerHTML = '<span style="color:#ff4444">Decryption failed. Check the URL.</span>';
+        }
+    } catch (e) {
+        result.innerHTML = '<span style="color:#ff4444">Error: ' + e.message + '</span>';
+    }
 }
 
 // ===== KEYBOARD SHORTCUTS =====
@@ -829,7 +895,7 @@ document.addEventListener('keydown', e => {
     if (e.target.tagName === 'INPUT') return;
     switch (e.code) {
         case 'Space': e.preventDefault(); togglePlay(); break;
-        case 'ArrowRight': audio.currentTime = Math.min(audio.currentTime + 5, audio.duration); break;
+        case 'ArrowRight': audio.currentTime = Math.min(audio.currentTime + 5, audio.duration || 0); break;
         case 'ArrowLeft': audio.currentTime = Math.max(audio.currentTime - 5, 0); break;
         case 'KeyN': nextSong(); break;
         case 'KeyP': prevSong(); break;
@@ -838,29 +904,36 @@ document.addEventListener('keydown', e => {
     }
 });
 
+// ===== MEDIA SESSION (Lock screen controls) =====
+audio.addEventListener('play', () => {
+    if (!currentSongData || !('mediaSession' in navigator)) return;
+
+    const artistText = getArtistText(currentSongData.artists);
+    const imageUrl = currentSongData.image?.medium
+        || currentSongData.image?.low
+        || '';
+
+    navigator.mediaSession.metadata = new MediaMetadata({
+        title: currentSongData.name || 'Unknown',
+        artist: artistText,
+        album: currentSongData.album || '',
+        artwork: imageUrl ? [
+            { src: imageUrl, sizes: '500x500', type: 'image/jpeg' }
+        ] : []
+    });
+
+    navigator.mediaSession.setActionHandler('play', () => audio.play());
+    navigator.mediaSession.setActionHandler('pause', () => audio.pause());
+    navigator.mediaSession.setActionHandler('previoustrack', prevSong);
+    navigator.mediaSession.setActionHandler('nexttrack', nextSong);
+});
+
 // ===== HELPERS =====
 function formatTime(s) {
     s = Math.floor(s);
     const m = Math.floor(s / 60);
     return m + ':' + String(s % 60).padStart(2, '0');
 }
-
-// ===== MEDIA SESSION API (Lock screen controls) =====
-audio.addEventListener('play', () => {
-    if (!currentSongData || !('mediaSession' in navigator)) return;
-    navigator.mediaSession.metadata = new MediaMetadata({
-        title: currentSongData.name,
-        artist: currentSongData.artists,
-        album: currentSongData.album || '',
-        artwork: [
-            { src: currentSongData.image?.medium || '', sizes: '500x500', type: 'image/jpeg' }
-        ]
-    });
-    navigator.mediaSession.setActionHandler('play', () => audio.play());
-    navigator.mediaSession.setActionHandler('pause', () => audio.pause());
-    navigator.mediaSession.setActionHandler('previoustrack', prevSong);
-    navigator.mediaSession.setActionHandler('nexttrack', nextSong);
-});
 
 // ===== LOAD TRENDING ON START =====
 async function loadTrending() {
@@ -873,7 +946,7 @@ async function loadTrending() {
 
         if (data.success && data.results?.length > 0) {
             songs = data.results;
-            content.innerHTML = `<div class="section-title">🔥 Trending Now</div><div class="song-list" id="songList"></div>`;
+            content.innerHTML = '<div class="section-title">🔥 Trending Now</div><div class="song-list" id="songList"></div>';
             renderSongs();
         } else {
             content.innerHTML = '<div class="status">Search for a song to get started</div>';
